@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.contrib import rnn
 from tensorflow.contrib import layers
+import tfutils as tfu
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,.?!@#$^&*()_-=| "
 ALPHABET_LENGTH = len(ALPHABET)
@@ -27,7 +28,7 @@ Yo_ = tf.one_hot(Y_, ALPHABET_LENGTH, 1.0, 0.0) # [ BATCHSIZE, SEQUENCE_LENGTH ,
 Hin = tf.placeholder(tf.float32, [None, INTERNAL_SIZE * LAYERS], name='Hin') # [ BATCHSIZE , INTERNAL_SIZE * LAYERS ]
 
 # Deep stacked GRU cell
-deep_drop_cell = MultiDropoutGRUCell(size=INTERNAL_SIZE, pkeep=DROPOUT_KEEP_RATE, layers=LAYERS)
+deep_drop_cell = tfu.rnn.MultiDropoutGRUCell(size=INTERNAL_SIZE, pkeep=DROPOUT_KEEP_RATE, layers=LAYERS)
 
 # Output predictions and output state
 Yr, H = tf.nn.dynamic_rnn(deep_drop_cell, Xo, dtype=tf.float32, initial_state=Hin)
@@ -43,14 +44,3 @@ Yo = tf.nn.softmax(Ylogits, name='Yo')
 Y = tf.argmax(Yo, 1)
 Y = tf.reshape(Y, [batchsize, -1], name='Y')
 train_step = tf.train.AdamOptimizer(lr).minimize(loss)
-
-def DropoutGRUCell(size=512, pkeep=1.0):
-    cell = rnn.GRUCell(size)
-    cell = rnn.DropoutWrapper(cell, input_keep_prob=pkeep)
-    return cell
-    
-def MultiDropoutGRUCell(size=512, pkeep=1.0, layers=3):
-    cell = DropoutGRUCell(size=size, pkeep=pkeep)
-    cell = rnn.MultiRNNCell([cell] * layers, state_is_tuple=False)
-    cell = rnn.DropoutWrapper(cell, output_keep_prob=pkeep)
-    return cell
